@@ -105,6 +105,7 @@ int main(int argc, char **argv)
 	{ std::printf("%s\nPress HOME to exit and try again.\n", CiosBaseFailure.what()); }
 
 	u32 uiPressedWPAD{}, uiPressedPAD{};
+	expansion_t expansionType{};
 
 	while(TRUE)
 	{
@@ -114,13 +115,16 @@ int main(int argc, char **argv)
 
 		uiPressedWPAD = WPAD_ButtonsDown(WPAD_CHAN_0);
 		uiPressedPAD = PAD_ButtonsDown(PAD_CHAN0);
+		WPAD_Expansion(WPAD_CHAN_0, &expansionType);
 
-		if ((uiPressedWPAD & WPAD_BUTTON_HOME) || (uiPressedPAD & PAD_BUTTON_START))
+		if ((uiPressedWPAD & WPAD_BUTTON_HOME) || (uiPressedPAD & PAD_BUTTON_START) ||
+			(expansionType.type == EXP_CLASSIC && expansionType.classic.btns & CLASSIC_CTRL_BUTTON_HOME))
 		{
 			PrepareExit();
 			std::exit(EXIT_SUCCESS);
 		}
-		if ((uiPressedWPAD & WPAD_BUTTON_PLUS) || (uiPressedPAD & PAD_BUTTON_Y))
+		if ((uiPressedWPAD & WPAD_BUTTON_PLUS) || (uiPressedPAD & PAD_BUTTON_Y) ||
+			(expansionType.type == EXP_CLASSIC && expansionType.classic.btns & CLASSIC_CTRL_BUTTON_PLUS))
 		{
 			PrepareExit();
 			WII_LaunchTitle(0x1000248414241);
