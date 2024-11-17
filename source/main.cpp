@@ -15,6 +15,7 @@ static GXRModeObj* SpGXRmode{nullptr};
 
 
 void Initialise() noexcept;
+void PrepareExit() noexcept;
 
 
 //---------------------------------------------------------------------------------
@@ -30,11 +31,13 @@ int main(int argc, char **argv)
 	u32 uiExpansionType{WPAD_EXP_NONE};
 
 	std::printf("\x1b[2;0H");
-	std::puts("Wii Shop Channel Ticket Restorer");
-	std::puts("--------------------------------");
+	std::puts("Wii Shop Channel Ticket Restorer v1.0");
+	std::puts("-------------------------------------");
 
 	try
 	{
+		/* The EC file is a WSC file containing some key-value pairs related to the synchronization of tickets. */
+
 		std::puts("Opening EC file...");
 
 		if ((iFileDescriptor = ISFS_Open("/title/00010002/48414241/data/ec.cfg", ISFS_OPEN_RW)) < 0)
@@ -47,25 +50,25 @@ int main(int argc, char **argv)
 			throw std::ios_base::failure(std::string{"Error getting file stats from ec.cfg, ret = "} + 
 				std::to_string(iError));
 
-		char uyOffset[fStatsEC.file_length] ATTRIBUTE_ALIGN(32);
+		char acECContent[fStatsEC.file_length] ATTRIBUTE_ALIGN(32) {};
 
 		std::puts("Reading EC file...");
 
-		if ((iError = ISFS_Read(iFileDescriptor, uyOffset, fStatsEC.file_length)) < 0)
+		if ((iError = ISFS_Read(iFileDescriptor, acECContent, fStatsEC.file_length)) < 0)
 			throw std::ios_base::failure(std::string{"Error reading ec.cfg, ret = "} + 
 				std::to_string(iError));
 
-		std::string sFile{uyOffset, fStatsEC.file_length};
+		std::string sFile{acECContent, fStatsEC.file_length};
 		u32 uiPosition = sFile.find("isNeedTicketSyncImportAll", 0, 25);
 
 		std::puts("Patching EC file...");
 
-		if (uiPosition == std::string::npos)
+		if (uiPosition == std::string::npos)	// The file is corrupted
 		{
 			ISFS_Close(iFileDescriptor);
 			ISFS_Delete("/title/00010002/48414241/data/ec.cfg");
 		}
-		else
+		else	// Toggle the sync value
 		{
 			if ((iError = ISFS_Seek(iFileDescriptor, uiPosition + 27, 0)) < 0)
 				throw std::ios_base::failure(std::string{"Error seeking ec.cfg, ret = "} + 
@@ -79,7 +82,7 @@ int main(int argc, char **argv)
 		}
 
 		ISFS_Close(iFileDescriptor);
-		std::puts("Everything's good! Press HOME to exit the application or press + to go to the Wii Shop Channel.");
+		std::puts("\nEverything's good!\n\nHOME: exit the application\n+: go to the Wii Shop Channel.");
 	}
 	catch (const std::ios_base::failure& CiosBaseFailure)
 	{ std::printf("%s\nPress HOME to exit and try again.\n", CiosBaseFailure.what()); }
@@ -97,14 +100,12 @@ int main(int argc, char **argv)
 			{
 				if (pWPADData0->btns_d & WPAD_BUTTON_HOME)
 				{
-					std::puts("Exiting...");
-					ISFS_Deinitialize();
+					PrepareExit();
 					std::exit(EXIT_SUCCESS);
 				}
 				if (pWPADData0->btns_d & WPAD_BUTTON_PLUS)
 				{
-					std::puts("Exiting...");
-					ISFS_Deinitialize();
+					PrepareExit();
 					WII_LaunchTitle(0x1000248414241);
 				}
 			}
@@ -155,4 +156,11 @@ void Initialise() noexcept
 	// Wait for Video setup to complete
 	VIDEO_WaitVSync();
 	if(SpGXRmode->viTVMode & VI_NON_INTERLACE) VIDEO_WaitVSync();
+}
+
+
+void PrepareExit() noexcept
+{
+	std::puts("Exiting...");
+	ISFS_Deinitialize();
 }
