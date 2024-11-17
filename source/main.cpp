@@ -23,6 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cstdlib>
 
 #include <gccore.h>
+#include <ogc/pad.h>
 #include <wiiuse/wpad.h>
 #include <gctypes.h>
 #include <gcutil.h>
@@ -43,12 +44,6 @@ int main(int argc, char **argv)
 //---------------------------------------------------------------------------------
 	Initialise();
 
-	s32 iFileDescriptor{-1};
-	s32 iError{ISFS_OK};
-
-	WPADData* pWPADData0{};
-	u32 uiExpansionType{WPAD_EXP_NONE};
-
 	std::printf("\x1b[2;0H");
 	std::puts("Wii Shop Channel Ticket Restorer v1.0");
 	std::puts("-------------------------------------");
@@ -58,6 +53,9 @@ int main(int argc, char **argv)
 		/* The EC file is a WSC file containing some key-value pairs related to the synchronization of tickets. */
 
 		std::puts("Opening EC file...");
+
+		s32 iFileDescriptor{-1};
+		s32 iError{ISFS_OK};
 
 		if ((iFileDescriptor = ISFS_Open("/title/00010002/48414241/data/ec.cfg", ISFS_OPEN_RW)) < 0)
 			throw std::ios_base::failure(std::string{"Error opening ec.cfg, ret = "} + 
@@ -101,33 +99,31 @@ int main(int argc, char **argv)
 		}
 
 		ISFS_Close(iFileDescriptor);
-		std::puts("\nEverything's good!\n\nHOME: exit the application\n+: go to the Wii Shop Channel.");
+		std::puts("\nEverything's good!\n\nHOME/START: exit the application\n+/Y: go to the Wii Shop Channel.");
 	}
 	catch (const std::ios_base::failure& CiosBaseFailure)
 	{ std::printf("%s\nPress HOME to exit and try again.\n", CiosBaseFailure.what()); }
+
+	u32 uiPressedWPAD{}, uiPressedPAD{};
 
 	while(TRUE)
 	{
 		// Call WPAD_ScanPads each loop, this reads the latest controller states
 		WPAD_ScanPads();
+		PAD_ScanPads();
 
-		if (WPAD_Probe(WPAD_CHAN_0, &uiExpansionType) == WPAD_ERR_NONE)
+		uiPressedWPAD = WPAD_ButtonsDown(WPAD_CHAN_0);
+		uiPressedPAD = PAD_ButtonsDown(PAD_CHAN0);
+
+		if ((uiPressedWPAD & WPAD_BUTTON_HOME) || (uiPressedPAD & PAD_BUTTON_START))
 		{
-			pWPADData0 = WPAD_Data(WPAD_CHAN_0);
-
-			if (pWPADData0->btns_d)
-			{
-				if (pWPADData0->btns_d & WPAD_BUTTON_HOME)
-				{
-					PrepareExit();
-					std::exit(EXIT_SUCCESS);
-				}
-				if (pWPADData0->btns_d & WPAD_BUTTON_PLUS)
-				{
-					PrepareExit();
-					WII_LaunchTitle(0x1000248414241);
-				}
-			}
+			PrepareExit();
+			std::exit(EXIT_SUCCESS);
+		}
+		if ((uiPressedWPAD & WPAD_BUTTON_PLUS) || (uiPressedPAD & PAD_BUTTON_Y))
+		{
+			PrepareExit();
+			WII_LaunchTitle(0x1000248414241);
 		}
 
 		// Wait for the next frame
@@ -143,6 +139,7 @@ void Initialise() noexcept
 
 	// This function initialises the attached controllers
 	WPAD_Init();
+	PAD_Init();
 
 	// Initialise filesystem
 	ISFS_Initialize();
