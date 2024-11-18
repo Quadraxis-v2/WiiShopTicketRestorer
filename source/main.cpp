@@ -48,13 +48,14 @@ int main(int argc, char **argv)
 	std::puts("Wii Shop Channel Ticket Restorer v1.0");
 	std::puts("-------------------------------------");
 
+	s32 iFileDescriptor{-1};
+
 	try
 	{
 		/* The EC file is a WSC file containing some key-value pairs related to the synchronization of tickets. */
 
 		std::puts("Opening EC file...");
 
-		s32 iFileDescriptor{-1};
 		s32 iError{ISFS_OK};
 
 		if ((iFileDescriptor = ISFS_Open("/title/00010002/48414241/data/ec.cfg", ISFS_OPEN_RW)) < 0)
@@ -76,7 +77,7 @@ int main(int argc, char **argv)
 				std::to_string(iError));
 
 		std::string sFile{acECContent, fStatsEC.file_length};
-		u32 uiPosition = sFile.find("isNeedTicketSyncImportAll", 0, 25);
+		u32 uiPosition = sFile.find("isNeedTicketSync\0", 0, 17);
 
 		std::puts("Patching EC file...");
 
@@ -87,7 +88,7 @@ int main(int argc, char **argv)
 		}
 		else	// Toggle the sync value
 		{
-			if ((iError = ISFS_Seek(iFileDescriptor, uiPosition + 27, 0)) < 0)
+			if ((iError = ISFS_Seek(iFileDescriptor, uiPosition + 18, 0)) < 0)
 				throw std::ios_base::failure(std::string{"Error seeking ec.cfg, ret = "} + 
 					std::to_string(iError));
 
@@ -102,7 +103,17 @@ int main(int argc, char **argv)
 		std::puts("\nEverything's good!\n\nHOME/START: exit the application\n+/Y: go to the Wii Shop Channel.");
 	}
 	catch (const std::ios_base::failure& CiosBaseFailure)
-	{ std::printf("%s\nPress HOME to exit and try again.\n", CiosBaseFailure.what()); }
+	{
+		switch (iFileDescriptor)
+		{
+		case -1: 
+		case -102: std::puts("Permission denied. Are you running me from the Homebrew Channel?"); break;
+		case -6: 
+		case -106: std::puts("File not found. If you have the Wii Shop Channel installed, you should be good."); break;
+		default: break;
+		}
+		std::printf("\n%s\nPress HOME/START to exit and try again.\n", CiosBaseFailure.what()); 
+	}
 
 	u32 uiPressedWPAD{}, uiPressedPAD{};
 	expansion_t expansionType{};
