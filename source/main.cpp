@@ -100,7 +100,7 @@ int main(int argc, char **argv)
 		}
 
 		ISFS_Close(iFileDescriptor);
-		std::puts("\nEverything's good!\n\nHOME/START: exit the application\n+/Y: go to the Wii Shop Channel.");
+		std::puts("\nEverything's good!");
 	}
 	catch (const std::ios_base::failure& CiosBaseFailure)
 	{
@@ -114,6 +114,8 @@ int main(int argc, char **argv)
 		}
 		std::printf("\n%s\nPress HOME/START to exit and try again.\n", CiosBaseFailure.what()); 
 	}
+
+	std::puts("\nHOME/START: exit the application\n+/Y: go to the Wii Shop Channel.");
 
 	u32 uiPressedWPAD{}, uiPressedPAD{};
 	expansion_t expansionType{};
