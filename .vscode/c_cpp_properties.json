@@ -4,11 +4,12 @@
             "name": "Wii",
             "includePath": [
                 "${DEVKITPRO_HOME}/libogc/include/**",
-                "${DEVKITPRO_HOME}/devkitPPC/lib/gcc/powerpc-eabi/13.1.0/include/**",
+                "${DEVKITPRO_HOME}/devkitPPC/lib/gcc/powerpc-eabi/14.2.0/include/**",
                 "${DEVKITPRO_HOME}/devkitPPC/powerpc-eabi/include/**",
                 "${DEVKITPRO_HOME}/portlibs/ppc/include",
                 "${DEVKITPRO_HOME}/libogc/include/ogc",
-                "${DEVKITPRO_HOME}/portlibs/wii/include"
+                "${DEVKITPRO_HOME}/portlibs/wii/include",
+                "${workspaceFolder}/include"
             ],
             "defines": [
                 "_DEBUG",

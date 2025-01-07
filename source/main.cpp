@@ -1,6 +1,6 @@
 /*
 main.cpp --- Wii Shop Channel Ticket Restorer
-Copyright (C) 2022  Juan de la Cruz Caravaca Guerrero (Quadraxis_v2)
+Copyright (C) 2025  Juan de la Cruz Caravaca Guerrero (Quadraxis_v2)
 juan.dlcruzcg@gmail.com
 
 This program is free software: you can redistribute it and/or modify
@@ -30,6 +30,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <ogc/isfs.h>
 #include <ogc/wiilaunch.h>
 
+#include "libpatcher.hpp"
+
 static void* SpXfb{nullptr};	
 static GXRModeObj* SpGXRmode{nullptr};
 
@@ -50,17 +52,26 @@ int main(int argc, char **argv)
 
 	s32 iFileDescriptor{-1};
 
+	bool bIsKorean{false};
+
 	try
 	{
 		/* The EC file is a WSC file containing some key-value pairs related to the synchronization of tickets. */
 
 		std::puts("Opening EC file...");
 
+		const std::string CsPathWorld{"/title/00010002/48414241/data/ec.cfg"};
+		const std::string CsPathKorea{"/title/00010002/4841424B/data/ec.cfg"};
+
 		s32 iError{ISFS_OK};
 
-		if ((iFileDescriptor = ISFS_Open("/title/00010002/48414241/data/ec.cfg", ISFS_OPEN_RW)) < 0)
-			throw std::ios_base::failure(std::string{"Error opening ec.cfg, ret = "} + 
-				std::to_string(iFileDescriptor));
+		if ((iFileDescriptor = ISFS_Open(CsPathWorld.c_str(), ISFS_OPEN_RW)) < 0)	// World
+		{
+			if ((iFileDescriptor = ISFS_Open(CsPathKorea.c_str(), ISFS_OPEN_RW)) < 0)	// Korea
+				throw std::ios_base::failure(std::string{"Error opening ec.cfg, ret = "} + 
+					std::to_string(iFileDescriptor));
+			else bIsKorean = true;
+		}
 
 		fstats fStatsEC ATTRIBUTE_ALIGN(32) {};
 
@@ -84,7 +95,7 @@ int main(int argc, char **argv)
 		if (uiPosition == std::string::npos)	// The file is corrupted
 		{
 			ISFS_Close(iFileDescriptor);
-			ISFS_Delete("/title/00010002/48414241/data/ec.cfg");
+			ISFS_Delete(bIsKorean ? CsPathKorea.c_str() : CsPathWorld.c_str());
 		}
 		else	// Toggle the sync value
 		{
@@ -140,7 +151,7 @@ int main(int argc, char **argv)
 			(expansionType.type == EXP_CLASSIC && expansionType.classic.btns & CLASSIC_CTRL_BUTTON_PLUS))
 		{
 			PrepareExit();
-			WII_LaunchTitle(0x1000248414241);
+			WII_LaunchTitle(bIsKorean ? 0x100024841424B : 0x1000248414241);
 		}
 
 		// Wait for the next frame
@@ -151,6 +162,9 @@ int main(int argc, char **argv)
 
 void Initialise() noexcept
 {
+	if (!patch_ahbprot_reset()) std::exit(EXIT_FAILURE);
+	if (!patch_isfs_permissions()) std::exit(EXIT_FAILURE);
+
 	// Initialise the video system
 	VIDEO_Init();
 
